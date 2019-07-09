@@ -26,10 +26,10 @@ using namespace sferes::gen::evo_float;
 
 struct Params
 {
-    SFERES_CONST size_t nb_joints = 12;
+    SFERES_CONST size_t nb_joints = 12; // Number of joints
 
     // the centroids need to be in [-1,1]
-    SFERES_CONST size_t nb_feature_dims = 2;
+    SFERES_CONST size_t nb_feature_dims = 2; // Behavioral descriptor dimensions
 
     struct ea
     {
@@ -43,6 +43,7 @@ struct Params
         // No self-adaptation for the directed part
         SFERES_CONST double tau_directed = 0.0;
 
+// Check for the different variants
 #ifdef VARIATIONGC
         SFERES_CONST double alpha = 0.1;
 #elif VARIATIONISO
@@ -111,14 +112,14 @@ struct Params
     struct pop
     {
         SFERES_CONST size_t init_size = 100;
-        SFERES_CONST size_t size = 100;
+        SFERES_CONST size_t size = 100; // Population size
         SFERES_CONST size_t nb_gen = 999;
         SFERES_CONST size_t dump_period = 500;
     };
 
     struct evo_float
     {
-        SFERES_CONST float cross_rate = 1.0f;
+        SFERES_CONST float cross_rate = 1.0f; // Crossover rate
 
 #if defined(VARIATIONSBX)
         SFERES_CONST float eta_c = 10.0f;
@@ -126,47 +127,59 @@ struct Params
 #else
         SFERES_CONST cross_over_t cross_over_type = no_cross_over;
 #endif
-        SFERES_CONST float mutation_rate = 0.0f;
+        SFERES_CONST float mutation_rate = 0.0f; // No mutation rate
         SFERES_CONST float sigma = 0.0f;
         SFERES_CONST mutation_t mutation_type = gaussian;
     };
 
     struct parameters
     {
-        SFERES_CONST float min = -M_PI;
+        // Limits the values for the joints angles between [-pi, pi]
+        SFERES_CONST float min = -M_PI; 
         SFERES_CONST float max = M_PI;
     };
 };
 
 namespace global
 {
-class PlanarRobotArm
-{
-  public:
-    PlanarRobotArm()
-        : _lengths(std::vector<float>(Params::nb_joints,
-                                      1.0 / float(Params::nb_joints))) {}
-
-    Eigen::Vector2f get_effector_position(const std::vector<float> &angles)
+    class PlanarRobotArm
     {
-        Eigen::VectorXf lengths =
-            Eigen::Map<Eigen::VectorXf>(&_lengths[0], _lengths.size());
+        public:
+            // Sets uo the lengths of the arm to 1/nb_joints
+            PlanarRobotArm()
+                : _lengths(std::vector<float>(Params::nb_joints,
+                                              1.0 / float(Params::nb_joints))) {}
 
-        std::vector<float> angles_cumsum(angles.size(), 0.0);
-        std::partial_sum(angles.begin(), angles.end(), angles_cumsum.begin());
-        Eigen::VectorXf eigen_angles_cumsum =
-            Eigen::Map<Eigen::VectorXf>(&angles_cumsum[0], angles_cumsum.size());
+            Eigen::Vector2f get_effector_position(const std::vector<float> &angles)
+            {
+                // Create a vectors with the length of the joints    
+                Eigen::VectorXf lengths =
+                    Eigen::Map<Eigen::VectorXf>(&_lengths[0], _lengths.size());
 
-        Eigen::Vector2f pos;
-        pos << lengths.dot(eigen_angles_cumsum.array().cos().matrix()),
-            lengths.dot(eigen_angles_cumsum.array().sin().matrix());
+                // Create a vector for the accumulative sum of the angles
+                std::vector<float> angles_cumsum(angles.size(), 0.0);
+                // Perform a partial_sum... TODO: what is a partial sum?
+                std::partial_sum(angles.begin(), angles.end(), angles_cumsum.begin());
+                // Store the accumulative sum in a VectorXF
+                Eigen::VectorXf eigen_angles_cumsum =
+                    Eigen::Map<Eigen::VectorXf>(&angles_cumsum[0], angles_cumsum.size());
+                /*
+                Computs the end effector position using the equations:
+                b(y) = || l_1 cos(a_1) + l2 cos(a1 + a2) + ... + l_n cos(a1 + a2 + ... + a_n)||
+                       || l_1 sin(a_1) + l2 sib(a1 + a2) + ... + l_n sin(a1 + a2 + ... + a_n)||
 
-        return pos;
-    }
+                End effector position between [-1,1]
+                 */
+                Eigen::Vector2f pos;
+                    pos << lengths.dot(eigen_angles_cumsum.array().cos().matrix()),
+                        lengths.dot(eigen_angles_cumsum.array().sin().matrix());
 
-  protected:
-    std::vector<float> _lengths;
-};
+                return pos;
+            }
+
+        protected:
+            std::vector<float> _lengths;
+    };
 }
 
 typedef Params::ea::point_t point_t;
