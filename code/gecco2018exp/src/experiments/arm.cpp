@@ -164,14 +164,16 @@ namespace global
                 Eigen::VectorXf eigen_angles_cumsum =
                     Eigen::Map<Eigen::VectorXf>(&angles_cumsum[0], angles_cumsum.size());
                 /*
-                Computs the end effector position using the equations:
+
+                Computs the end effector position using the forward kinematics equations:
+                - Geometric solution approach
                 b(y) = || l_1 cos(a_1) + l2 cos(a1 + a2) + ... + l_n cos(a1 + a2 + ... + a_n)||
                        || l_1 sin(a_1) + l2 sib(a1 + a2) + ... + l_n sin(a1 + a2 + ... + a_n)||
 
                 End effector position between [-1,1]
                  */
                 Eigen::Vector2f pos;
-                    pos << lengths.dot(eigen_angles_cumsum.array().cos().matrix()),
+                pos << lengths.dot(eigen_angles_cumsum.array().cos().matrix()),
                         lengths.dot(eigen_angles_cumsum.array().sin().matrix());
 
                 return pos;
